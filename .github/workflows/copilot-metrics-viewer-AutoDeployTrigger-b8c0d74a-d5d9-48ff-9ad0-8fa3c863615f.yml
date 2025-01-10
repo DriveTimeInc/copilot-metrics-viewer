@@ -1,44 +1,55 @@
 name: Trigger auto deployment for copilot-metrics-viewer
 
-# When this action will be executed
 on:
-  # Automatically trigger it when detected changes in repo
   push:
-    branches: 
-      [ main ]
-    paths:
-    - '**'
-    - '.github/workflows/copilot-metrics-viewer-AutoDeployTrigger-b8c0d74a-d5d9-48ff-9ad0-8fa3c863615f.yml'
+    branches:
+      - main
 
-  # Allow manual trigger 
+  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
-      
+    inputs:
+      tag:
+        description: 'Tag for the Docker image'
+        required: true
+        default: 'latest'
+
+permissions:
+  packages: write
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout to the branch
-        uses: actions/checkout@v2
+      - name: Checkout GitHub Action
+        uses: actions/checkout@v4
 
-      - name: Azure Login
+      - name: 'Login via Azure CLI'
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.COPILOTMETRICSVIEWER_AZURE_CREDENTIALS }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Build and push container image to registry
-        uses: azure/container-apps-deploy-action@v2
+      - name: Login to Azure Container Registry
+        uses: docker/login-action@v3
         with:
-          appSourcePath: ${{ github.workspace }}api.Dockerfile
-          _dockerfilePathKey_: _dockerfilePath_
-          registryUrl: dtcontainerregistry-drivetime4.azurecr.io
-          registryUsername: ${{ secrets.COPILOTMETRICSVIEWER_REGISTRY_USERNAME }}
-          registryPassword: ${{ secrets.COPILOTMETRICSVIEWER_REGISTRY_PASSWORD }}
-          containerAppName: copilot-metrics-viewer
-          resourceGroup: rg-copilot-metrics
-          imageToBuild: dtcontainerregistry-drivetime4.azurecr.io/drivetimeinc/copilot-metrics-viewer:${{ github.sha }}
-          
-            
+          registry: dtcontainerregistry-drivetime4.azurecr.io
+          username: DTContainerRegistry
+          password: ${{ secrets.ACR_DTCONTAINERREGISTRY_PASSWORD }}
 
-     
+      - name: Build and Push Docker Image
+        run: |
+          GITHUB_REPO="${GITHUB_REPO,,}"  # convert repo name to lowercase as required by docker
+          echo "building docker image in repository '$GITHUB_REPO' ..."
+          docker build -f api.Dockerfile --label "org.opencontainers.image.title=copilot-metrics-viewer" --label "org.opencontainers.image.description=Metrics viewer for GitHub Copilot usage" --label "org.opencontainers.image.source=$GITHUB_REPO" -t dtcontainerregistry-drivetime4.azurecr.io/$GITHUB_REPO:${{ github.run_number }} .
+          docker push dtcontainerregistry-drivetime4.azurecr.io/$GITHUB_REPO:${{ github.run_number }}
+        env:
+          GITHUB_REPO: ${{ github.repository }}
 
+      - name: Deploy to Azure Web App
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: 'copilot-metrics-viewer'
+          slot-name: 'production'
+          images: 'dtcontainerregistry-drivetime4.azurecr.io/drivetimeinc/copilot-metrics-viewer:${{ github.run_number }}'
+          resource-group-name: rg-copilot-metrics
