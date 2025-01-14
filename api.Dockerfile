@@ -34,6 +34,7 @@ COPY --chown=1000:1000 --from=build-stage /app/dist/assets/app-config.js /api/ap
 EXPOSE 3000
 
 # Command to run your API (and serve your Vue.js app)
+RUN chown -R 1001:1001 /api
 RUN chmod +x /api/docker-entrypoint.api/entrypoint.sh
 
 USER node
