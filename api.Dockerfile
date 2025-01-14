@@ -38,3 +38,5 @@ RUN chmod +x /api/docker-entrypoint.api/entrypoint.sh
 
 USER node
 ENTRYPOINT ["/api/docker-entrypoint.api/entrypoint.sh"]
+
+ENV DD_TRACE_OTEL_ENABLED=true

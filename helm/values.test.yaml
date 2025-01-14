@@ -1,0 +1,90 @@
+replicaCount: 2
+serviceName: copilot-metrics-viewer
+namespace: platform-test
+authorization:
+  enabled: false
+labels:
+  standard:
+    business: technology-services
+    product: internal-developer-platform
+    team: platform-engineering
+    tier: 3
+    type: web
+EnvVars:
+  - name: NODE_ENV
+    value: 'production'
+  - name: PORT
+    value: '3000'
+  - name: HOST_IP
+    valueFrom:
+      fieldRef:
+        fieldPath: status.hostIP
+  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    value: 'http://$(HOST_IP):4318'
+  - name: VUE_APP_MOCKED_DATA
+    value: 'false'
+  - name: VUE_APP_SCOPE
+    value: 'organization'
+  - name: VUE_APP_GITHUB_API
+    value: '/api/github'
+  - name: VUE_APP_GITHUB_ORG
+    value: 'drivetimeinc'
+  - name: VUE_APP_GITHUB_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: copilot-metrics-github-pat
+        key: token
+  - name: GITHUB_CLIENT_ID
+    valueFrom:
+      secretKeyRef:
+        name: copilot-metrics-github-app
+        key: client-id
+  - name: GITHUB_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: copilot-metrics-github-app
+        key: client-secret
+  - name: SESSION_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: copilot-metrics-github-app
+        key: private-key
+service:
+  type: ClusterIP
+  port: 3000
+  targetPort: 3000
+ingress:
+  enabled: true
+  external: false
+  secret: drivetime-cloud-tls
+  annotations: {}
+  hosts: {}
+  tls: []
+# probes: #https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/
+#   livenessProbe: # Checks if the application in the pod is running. If the liveness probe fails, the pod is terminated and then restarted. This should be a quick check to see if the application is running.
+#     httpGet:
+#       path: /heartbeat
+#       port: 8080
+#     initialDelaySeconds: 60 # Wait x seconds before first check.
+#     periodSeconds: 15 # Check every x seconds.
+#     timeoutSeconds: 5 # x second timeout for the check.
+#     successThreshold: 1
+#     failureThreshold: 3 # Pod will be restarted if it fails x times in a row.
+#   readinessProbe: # Determines if the pod should receive traffic. If the readiness probe fails, the pod is removed from service load balancers. This should be a more thourough check than the liveness probe and include things like database connectivity.
+#     httpGet:
+#       path: /heartbeat/extended
+#       port: 8080
+#     initialDelaySeconds: 30 # Wait x seconds before first check.
+#     periodSeconds: 15 # Check every x seconds.
+#     timeoutSeconds: 5 # x second timeout for the check.
+#     successThreshold: 1
+#     failureThreshold: 3 # Pod will be restarted if it fails x times in a row.
+#   startupProbe: # Used to know when an application instance is actually started in slow-starting pods. Can use same checks as livenessProbe.
+#     httpGet:
+#       path: /heartbeat
+#       port: 8080
+#     initialDelaySeconds: 10 # Wait x seconds before first check.
+#     periodSeconds: 10 # Check every x seconds.
+#     timeoutSeconds: 5 # x second timeout for the check.
+#     successThreshold: 1
+#     failureThreshold: 18
