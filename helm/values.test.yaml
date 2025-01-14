@@ -88,3 +88,15 @@ ingress:
 #     timeoutSeconds: 5 # x second timeout for the check.
 #     successThreshold: 1
 #     failureThreshold: 18
+traefikMiddlewares:
+  - type: cors
+    headers:
+      accessControlAllowHeaders:
+        - '*'
+      accessControlAllowMethods:
+        - GET
+        - OPTIONS
+        - PUT
+        - POST
+      accessControlAllowOriginList:
+        - '*'
