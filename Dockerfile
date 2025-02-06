@@ -45,6 +45,8 @@ RUN echo '#!/bin/sh' > /entrypoint.sh && \
 USER node
 ENTRYPOINT [ "/entrypoint.sh" ]
 
+ENV DD_TRACE_OTEL_ENABLED=true
+
 #----------------------------------- PW layer - not used in production
 FROM mcr.microsoft.com/playwright:v1.49.1 AS base-playwright
 

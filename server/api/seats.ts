@@ -1,9 +1,8 @@
-import { Seat } from "@/model/Seat";
+import { Seat } from '@/model/Seat';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
-export default defineEventHandler(async (event) => {
-
+export default defineEventHandler(async event => {
   const config = useRuntimeConfig(event);
   let apiUrl = '';
   let mockedDataPath: string;
@@ -12,14 +11,20 @@ export default defineEventHandler(async (event) => {
     case 'team':
     case 'org':
       apiUrl = `https://api.github.com/orgs/${event.context.org}/copilot/billing/seats`;
-      mockedDataPath = resolve('public/mock-data/organization_seats_response_sample.json');
+      mockedDataPath = resolve(
+        'public/mock-data/organization_seats_response_sample.json',
+      );
       break;
     case 'ent':
       apiUrl = `https://api.github.com/enterprises/${event.context.ent}/copilot/billing/seats`;
-      mockedDataPath = resolve('public/mock-data/enterprise_seats_response_sample.json');
+      mockedDataPath = resolve(
+        'public/mock-data/enterprise_seats_response_sample.json',
+      );
       break;
     default:
-      return new Response('Invalid configuration/parameters for the request', { status: 400 });
+      return new Response('Invalid configuration/parameters for the request', {
+        status: 400,
+      });
   }
 
   if (config.public.isDataMocked && mockedDataPath) {
@@ -34,10 +39,36 @@ export default defineEventHandler(async (event) => {
     return new Response('No Authentication provided', { status: 401 });
   }
 
-  // console.log('getting seats data from:', apiUrl);
-  const response = await $fetch(apiUrl, {
-    headers: event.context.headers
-  }) as { seats: unknown[] };
-  const seatsData = response.seats.map((item: unknown) => new Seat(item));
+  const perPage = 100;
+  let page = 1;
+  let response = (await $fetch(apiUrl, {
+    headers: event.context.headers,
+    params: {
+      per_page: perPage,
+      page: page,
+    },
+  })) as { seats: unknown[]; total_seats: number };
+
+  let seatsData = response.seats.map((item: unknown) => new Seat(item));
+
+  // Calculate the total pages
+  const totalSeats = response.total_seats;
+  const totalPages = Math.ceil(totalSeats / perPage);
+
+  // Fetch the remaining pages
+  for (page = 2; page <= totalPages; page++) {
+    response = (await $fetch(apiUrl, {
+      headers: event.context.headers,
+      params: {
+        per_page: perPage,
+        page: page,
+      },
+    })) as { seats: unknown[]; total_seats: number };
+
+    seatsData = seatsData.concat(
+      response.seats.map((item: unknown) => new Seat(item)),
+    );
+  }
+
   return seatsData;
-})
+});
